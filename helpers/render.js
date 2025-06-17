@@ -188,36 +188,7 @@ class SharpMockupRender {
             throw new Error(`Failed to load crop image: ${error.message}`);
         }
     }
-    async resizeDesignImageToFitCrop(designImage, cropImage) {
-        try {
-            const designMeta = await designImage.metadata();
-            const cropMeta = await cropImage.metadata();
-    
-            const designRatio = designMeta.width / designMeta.height;
-            const cropRatio = cropMeta.width / cropMeta.height;
-    
-            let targetWidth, targetHeight;
-    
-            if (designRatio > cropRatio) {
-                // thiết kế quá rộng, scale theo chiều ngang
-                targetWidth = cropMeta.width;
-                targetHeight = Math.round(cropMeta.width / designRatio);
-            } else {
-                // thiết kế quá cao, scale theo chiều dọc
-                targetHeight = cropMeta.height;
-                targetWidth = Math.round(cropMeta.height * designRatio);
-            }
-    
-            return await designImage
-                .resize(targetWidth, targetHeight, {
-                    fit: 'contain',
-                    background: { r: 0, g: 0, b: 0, alpha: 0 } // nền trong suốt
-                })
-                .toBuffer();
-        } catch (error) {
-            throw new Error(`Failed to resize design image to fit crop: ${error.message}`);
-        }
-    }    
+
     async render(mockupId, designPath, storageId, hexColor) {
         try {
             // Load mockup configuration
@@ -248,7 +219,7 @@ class SharpMockupRender {
             const designImage = await this.loadDesignImage(designImagePath);
 
             // Resize design image according to config
-            const resizedDesignBuffer = await this.resizeDesignImageToFitCrop(designImage, this.cropImage);
+            const resizedDesign = await this.resizeDesignImage(designImage, config.designImageSize);
 
             // background size
             const backgroundSize = await this.backgroundImage.metadata();
@@ -266,9 +237,9 @@ class SharpMockupRender {
                         blend: 'over'
                     },
                     {
-                        input: resizedDesignBuffer,
-                        top: Math.floor((backgroundSize.height - (await sharp(resizedDesignBuffer).metadata()).height) / 2),
-                        left: Math.floor((backgroundSize.width - (await sharp(resizedDesignBuffer).metadata()).width) / 2)
+                        input: await resizedDesign.toBuffer(),
+                        top: config.designImagePosition.top,
+                        left: config.designImagePosition.left
                     },
                     {
                         input: await cropImage.toBuffer(),
